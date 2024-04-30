@@ -35,11 +35,11 @@
     "shortcuts": [
     {
       "name": "start timer",
-      "url": "/start"
+      "url": "start"
     },
     {
       "name": "stop timer",
-      "url": "/stop"
+      "url": "stop"
     }
   ]
 }
