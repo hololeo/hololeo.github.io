@@ -1,7 +1,7 @@
 {
     "name": "ub",
     "short_name": "ub",
-    "start_url": ".",
+    "start_url": "/p22/",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
@@ -35,11 +35,11 @@
     "shortcuts": [
     {
       "name": "start timer",
-      "url": "start"
+      "url": "./start"
     },
     {
       "name": "stop timer",
-      "url": "stop"
+      "url": "./stop"
     }
   ]
 }
