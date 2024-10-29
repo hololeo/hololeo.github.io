@@ -1,4 +1,4 @@
-HACSBoy is based on Ardens by Peter Brown
+HACSBoy is based on software by Peter Brown
 
 MIT License
 
