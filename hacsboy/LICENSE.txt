@@ -1,3 +1,5 @@
+HACSBoy is based on Ardens by Peter Brown
+
 MIT License
 
 Copyright (c) 2023 Peter Brown
