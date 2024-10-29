@@ -1,4 +1,4 @@
-HACSBoy is based on software by Peter Brown
+HACSBoy is stands on shoulders of giants...
 
 MIT License
 
