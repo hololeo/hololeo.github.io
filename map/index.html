@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        #mark-location, #interval-select, #location-info { z-index: 1000; position: absolute; }
+        #mark-location {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #3B82F6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #interval-select {
+            top: 20px;
+            right: 20px;
+            background-color: white;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        #location-info {
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            padding: 10px;
+            box-sizing: border-box;
+            text-align: center;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <select id="interval-select">
+        <option value="1000">1 Second</option>
+        <option value="5000" selected>5 Seconds</option>
+        <option value="10000">10 Seconds</option>
+    </select>
+    <button id="mark-location">Mark Location</button>
+    <div id="location-info">Latitude: - <br> Longitude: -</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.js"></script>
+    <script>
+        // Initialize map with continuous centering
+        const map = L.map('map', { 
+            center: [0, 0], 
+            zoom: 16,
+            zoomControl: false
+        });
+
+        // Create a custom compass arrow icon
+        function createCompassArrow(heading = 0) {
+            const svgTemplate = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="blue" stroke="white" stroke-width="2">
+                    <path transform="rotate(${heading}, 12, 12)" d="M12 2L2 22h20L12 2z"/>
+                </svg>
+            `;
+            const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgTemplate);
+            return L.icon({
+                iconUrl: svgUrl,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+        }
+
+        // UI References
+        const locationInfoEl = document.getElementById('location-info');
+        const markLocationBtn = document.getElementById('mark-location');
+
+        // Tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // State variables
+        let currentLocation = null;
+        let currentMarker = null;
+        let markedLocations = [];
+
+        // Update location info display
+        function updateLocationInfo(position) {
+            const { latitude, longitude, heading } = position.coords;
+            locationInfoEl.innerHTML = `
+                Latitude: ${latitude.toFixed(6)} <br>
+                Longitude: ${longitude.toFixed(6)} <br>
+                Heading: ${heading ? heading.toFixed(2) + '°' : 'N/A'}
+            `;
+            return [latitude, longitude];
+        }
+
+        // Start tracking location
+        function startLocationTracking() {
+            const intervalSelect = document.getElementById('interval-select');
+            const interval = parseInt(intervalSelect.value);
+
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    const currentLocation = updateLocationInfo(position);
+                    const { heading } = position.coords;
+                    
+                    // Always center and update marker
+                    map.setView(currentLocation, map.getZoom());
+                    
+                    // Remove previous marker
+                    if (currentMarker) {
+                        map.removeLayer(currentMarker);
+                    }
+                    
+                    // Create new marker with compass heading
+                    currentMarker = L.marker(currentLocation, {
+                        icon: createCompassArrow(heading || 0),
+                        rotationAngle: heading || 0
+                    }).addTo(map);
+                },
+                (error) => console.error("Error tracking location", error),
+                { 
+                    enableHighAccuracy: true, 
+                    timeout: interval, 
+                    maximumAge: 0 
+                }
+            );
+        }
+
+        // Mark location button
+        markLocationBtn.addEventListener('click', () => {
+            if (currentLocation) {
+                L.marker(currentLocation).addTo(map);
+            }
+        });
+
+        // Interval change listener
+        document.getElementById('interval-select').addEventListener('change', startLocationTracking);
+
+        // Initial tracking
+        startLocationTracking();
+    </script>
+</body>
+</html>
