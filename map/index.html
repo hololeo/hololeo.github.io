@@ -119,7 +119,7 @@
                 currentLocation = updateLocationInfo(position, currentHeading);
 
                 // Always center and update marker
-                // map.setView(currentLocation, map.getZoom());
+                map.setView(currentLocation, map.getZoom());
 
                 // Remove previous marker
                 if (currentMarker) {
