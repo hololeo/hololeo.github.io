@@ -55,154 +55,155 @@
     <div id="debug">Debug: -</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.js"></script>
-    <script>
-        // Initialize map with continuous centering
-        const map = L.map('map', { 
-            center: [0, 0], 
-            zoom: 16,
-            zoomControl: false
+<script>
+    // Initialize map with continuous centering
+    const map = L.map('map', { 
+        center: [0, 0], 
+        zoom: 16,
+        zoomControl: false
+    });
+
+    // UI References
+    const locationInfoEl = document.getElementById('location-info');
+    const debugEl = document.getElementById('debug');
+    const markLocationBtn = document.getElementById('mark-location');
+
+    // Tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // State variables
+    let currentLocation = null;
+    let currentMarker = null;
+    let currentHeading = 0;
+
+    // Create a custom compass arrow icon
+    function createCompassArrow(heading = 0) {
+        const svgTemplate = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
+                <g transform="rotate(${heading}, 12, 12)">
+                    <path d="M12 2L2 22h20L12 2z" fill="blue" stroke="white" stroke-width="2"/>
+                </g>
+            </svg>
+        `;
+        const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgTemplate);
+        return L.icon({
+            iconUrl: svgUrl,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
         });
+    }
 
-        // UI References
-        const locationInfoEl = document.getElementById('location-info');
-        const debugEl = document.getElementById('debug');
-        const markLocationBtn = document.getElementById('mark-location');
+    // Update location info display
+    function updateLocationInfo(position, heading) {
+        const { latitude, longitude } = position.coords;
+        locationInfoEl.innerHTML = `
+            Latitude: ${latitude.toFixed(6)} <br>
+            Longitude: ${longitude.toFixed(6)} <br>
+            Heading: ${heading.toFixed(2)}°
+        `;
+        return [latitude, longitude];
+    }
 
-        // Tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+    // Start tracking location and orientation
+    function startLocationTracking() {
+        const intervalSelect = document.getElementById('interval-select');
+        const interval = parseInt(intervalSelect.value);
 
-        // State variables
-        let currentLocation = null;
-        let currentMarker = null;
-        let currentHeading = 0;
+        // Absolute compass heading tracking
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
 
-        // Create a custom compass arrow icon
-        function createCompassArrow(heading = 0) {
-            const svgTemplate = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24">
-                    <g transform="rotate(${heading}, 12, 12)">
-                        <path d="M12 2L2 22h20L12 2z" fill="blue" stroke="white" stroke-width="2"/>
-                    </g>
-                </svg>
-            `;
-            const svgUrl = 'data:image/svg+xml;base64,' + btoa(svgTemplate);
-            return L.icon({
-                iconUrl: svgUrl,
-                iconSize: [40, 40],
-                iconAnchor: [20, 20]
-            });
-        }
+        navigator.geolocation.watchPosition(
+            (position) => {
+                currentLocation = updateLocationInfo(position, currentHeading);
 
-        // Update location info display
-        function updateLocationInfo(position, heading) {
-            const { latitude, longitude } = position.coords;
-            locationInfoEl.innerHTML = `
-                Latitude: ${latitude.toFixed(6)} <br>
-                Longitude: ${longitude.toFixed(6)} <br>
-                Heading: ${heading.toFixed(2)}°
-            `;
-            return [latitude, longitude];
-        }
+                // Always center and update marker
+                // map.setView(currentLocation, map.getZoom());
 
-        // Start tracking location and orientation
-        function startLocationTracking() {
-            const intervalSelect = document.getElementById('interval-select');
-            const interval = parseInt(intervalSelect.value);
-
-            // Absolute compass heading tracking
-            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-
-            navigator.geolocation.watchPosition(
-                (position) => {
-                    currentLocation = updateLocationInfo(position, currentHeading);
-                    
-                    // Always center and update marker
-                    map.setView(currentLocation, map.getZoom());
-                    
-                    // Remove previous marker
-                    if (currentMarker) {
-                        map.removeLayer(currentMarker);
-                    }
-                    
-                    // Create new marker with compass heading
-                    currentMarker = L.marker(currentLocation, {
-                        icon: createCompassArrow(currentHeading),
-                        rotationAngle: currentHeading
-                    }).addTo(map);
-                },
-                (error) => {
-                    debugEl.textContent = `Geolocation Error: ${error.message}`;
-                    console.error("Error tracking location", error);
-                },
-                { 
-                    enableHighAccuracy: true, 
-                    timeout: interval, 
-                    maximumAge: 0 
-                }
-            );
-        }
-
-        // Handle device orientation
-        function handleOrientation(event) {
-            // Use webkitCompassHeading for iOS, alpha for others
-            let heading = event.webkitCompassHeading || event.alpha;
-            
-            // Normalize heading to 0-360 degrees
-            if (heading !== null) {
-                heading = (360 - heading) % 360;
-                currentHeading = heading;
-                
-                debugEl.textContent = `Orientation: ${heading.toFixed(2)}°`;
-
-                // Update marker if location exists
-                if (currentLocation && currentMarker) {
+                // Remove previous marker
+                if (currentMarker) {
                     map.removeLayer(currentMarker);
-                    currentMarker = L.marker(currentLocation, {
-                        icon: createCompassArrow(heading),
-                        rotationAngle: heading
-                    }).addTo(map);
                 }
+
+                // Create new marker with compass heading
+                currentMarker = L.marker(currentLocation, {
+                    icon: createCompassArrow(currentHeading)
+                }).addTo(map);
+            },
+            (error) => {
+                debugEl.textContent = `Geolocation Error: ${error.message}`;
+                console.error("Error tracking location", error);
+            },
+            { 
+                enableHighAccuracy: true, 
+                timeout: interval, 
+                maximumAge: 0 
             }
+        );
+    }
+
+    // Handle device orientation
+    function handleOrientation(event) {
+        // Use webkitCompassHeading for iOS, alpha for others
+        let heading = event.webkitCompassHeading || event.alpha;
+
+        // Normalize heading to 0-360 degrees
+        if (heading !== null) {
+            heading = (360 - heading) % 360;
+            currentHeading = heading;
+
+            debugEl.textContent = `Orn: ${heading.toFixed(2)}°`;
+
+            // Update marker if location exists
+            if (currentLocation && currentMarker) {
+                map.removeLayer(currentMarker);
+                currentMarker = L.marker(currentLocation, {
+                    icon: createCompassArrow(heading)
+                }).addTo(map);
+            }
+        } else {
+            debugEl.textContent = "Orientation data not available";
         }
+    }
 
-        // Mark location button
-        markLocationBtn.addEventListener('click', () => {
-            if (currentLocation) {
-                L.marker(currentLocation).addTo(map);
-            }
-        });
-
-        // Interval change listener
-        document.getElementById('interval-select').addEventListener('change', startLocationTracking);
-
-        // Initial tracking
-        startLocationTracking();
-
-        // Request device orientation permissions for iOS
-        function requestPermission() {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response == 'granted') {
-                            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-                        }
-                    })
-                    .catch(console.error);
-            }
+    // Mark location button
+    markLocationBtn.addEventListener('click', () => {
+        if (currentLocation) {
+            L.marker(currentLocation).addTo(map);
         }
+    });
 
-        // Add permission request for iOS
+    // Interval change listener
+    document.getElementById('interval-select').addEventListener('change', startLocationTracking);
+
+    // Initial tracking
+    startLocationTracking();
+
+    // Request device orientation permissions for iOS
+    function requestPermission() {
         if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-            const permissionButton = document.createElement('button');
-            permissionButton.textContent = 'Enable Compass';
-            permissionButton.style.position = 'absolute';
-            permissionButton.style.top = '80px';
-            permissionButton.style.right = '20px';
-            permissionButton.addEventListener('click', requestPermission);
-            document.body.appendChild(permissionButton);
+            DeviceOrientationEvent.requestPermission()
+                .then(response => {
+                    if (response == 'granted') {
+                        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+                    }
+                })
+                .catch(console.error);
         }
-    </script>
+    }
+
+    // Add permission request for iOS
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const permissionButton = document.createElement('button');
+        permissionButton.textContent = 'Enable Compass';
+        permissionButton.style.position = 'absolute';
+        permissionButton.style.top = '80px';
+        permissionButton.style.right = '20px';
+        permissionButton.addEventListener('click', requestPermission);
+        document.body.appendChild(permissionButton);
+    }
+</script>
+
 </body>
 </html>
