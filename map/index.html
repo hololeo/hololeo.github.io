@@ -111,18 +111,8 @@
             const intervalSelect = document.getElementById('interval-select');
             const interval = parseInt(intervalSelect.value);
 
-            // Request permission for device orientation
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response == 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation);
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                window.addEventListener('deviceorientation', handleOrientation);
-            }
+            // Absolute compass heading tracking
+            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
 
             navigator.geolocation.watchPosition(
                 (position) => {
@@ -156,30 +146,24 @@
 
         // Handle device orientation
         function handleOrientation(event) {
-            // Use compass heading (alpha) or calculate from beta and gamma if needed
+            // Use webkitCompassHeading for iOS, alpha for others
             let heading = event.webkitCompassHeading || event.alpha;
             
             // Normalize heading to 0-360 degrees
-            if (heading === null) {
-                // Calculate heading from beta (pitch) and gamma (roll)
-                const beta = event.beta;
-                const gamma = event.gamma;
-                heading = Math.atan2(gamma, beta) * (180 / Math.PI);
-            }
-            
-            // Ensure positive heading
-            heading = (heading + 360) % 360;
-            
-            currentHeading = heading;
-            debugEl.textContent = `Orientation: ${heading.toFixed(2)}°`;
+            if (heading !== null) {
+                heading = (360 - heading) % 360;
+                currentHeading = heading;
+                
+                debugEl.textContent = `Orientation: ${heading.toFixed(2)}°`;
 
-            // Update marker if location exists
-            if (currentLocation && currentMarker) {
-                map.removeLayer(currentMarker);
-                currentMarker = L.marker(currentLocation, {
-                    icon: createCompassArrow(heading),
-                    rotationAngle: heading
-                }).addTo(map);
+                // Update marker if location exists
+                if (currentLocation && currentMarker) {
+                    map.removeLayer(currentMarker);
+                    currentMarker = L.marker(currentLocation, {
+                        icon: createCompassArrow(heading),
+                        rotationAngle: heading
+                    }).addTo(map);
+                }
             }
         }
 
@@ -195,6 +179,30 @@
 
         // Initial tracking
         startLocationTracking();
+
+        // Request device orientation permissions for iOS
+        function requestPermission() {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response == 'granted') {
+                            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+                        }
+                    })
+                    .catch(console.error);
+            }
+        }
+
+        // Add permission request for iOS
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            const permissionButton = document.createElement('button');
+            permissionButton.textContent = 'Enable Compass';
+            permissionButton.style.position = 'absolute';
+            permissionButton.style.top = '80px';
+            permissionButton.style.right = '20px';
+            permissionButton.addEventListener('click', requestPermission);
+            document.body.appendChild(permissionButton);
+        }
     </script>
 </body>
 </html>
